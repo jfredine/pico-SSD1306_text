@@ -14,7 +14,7 @@ class SSD1306_text {
     void write_string(const char *str);
  private:
     void write_cmds(const uint8_t *cmd, unsigned len);
-    void write_data(uint8_t *data, unsigned len);
+    void write_data(const uint8_t *data, unsigned len);
 
     typedef struct cursor_pos_s {
         unsigned row;
@@ -22,7 +22,7 @@ class SSD1306_text {
     } cursor_pos_t;
     cursor_pos_t cursor_pos_;
 
-    static uint8_t font_[][8];
+    static const uint8_t font_[][8];
     uint height_;
     uint width_;
     uint i2c_addr_;

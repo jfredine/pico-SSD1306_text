@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     SSD1306_text display;
 
     display.clear();
-    display.set_cursor(2, 0);
+    display.position(2, 0);
     display.write_string("Hello World!");
     while (1) {
     }
