@@ -13,7 +13,7 @@ class SSD1306_text {
     void position(unsigned row, unsigned col);
     void write_string(const char *str);
  private:
-    void write_cmds(const uint8_t *cmd, unsigned len);
+    void write_cmds(const uint8_t *cmds, unsigned len);
     void write_data(const uint8_t *data, unsigned len);
 
     typedef struct cursor_pos_s {

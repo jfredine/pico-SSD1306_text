@@ -31,8 +31,10 @@ class.  The constructor has six optional arguments.
     width - Width of the display in pixels
     i2c_addr - Address of the display on the I2C bus
     i2c - One of the I2C blocks in the pico (i2c0 or i2c1)
-    sda - GPIO to be used for SDA of the I2C bus (must be valid fot the i2c chosen)
-    scl - GPIO to be used for SCL on the I2C bus (must be valid for the i2c chosen)
+    sda - GPIO to be used for SDA of the I2C bus
+          (must be valid for the i2c chosen)
+    scl - GPIO to be used for SCL on the I2C bus
+          (must be valid for the i2c chosen)
 
 ### Use The Display
 

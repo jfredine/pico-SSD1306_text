@@ -153,6 +153,21 @@ const uint8_t SSD1306_text::font_[][8] = {
 };
 
 
+//
+// SSD1306_text::SSD1306_text
+// Arguments: height -- Height of the display in pixels
+//            width -- Width of the display in pixels
+//            i2c_addr -- Address of the display on the I2C bus
+//            i2c -- One of the I2C blocks in the pico (i2c0 or i2c1)
+//            sda -- GPIO to be used for SDA of the I2C bus
+//                  (must be valid for the i2c chosen)
+//            scl -- GPIO to be used for SCL on the I2C bus
+//                  (must be valid for the i2c chosen)
+// Returns: Nothing
+//
+// Constructor which sets up I2C and initializes the display
+//
+
 SSD1306_text::SSD1306_text(uint height, uint width, uint i2c_addr,
                            i2c_inst_t *i2c, uint sda, uint scl) {
 
@@ -201,6 +216,13 @@ SSD1306_text::SSD1306_text(uint height, uint width, uint i2c_addr,
 }
 
 
+//
+// SSD1306_text::clear
+// Arguments: None
+// Returns: Nothing
+//
+// Clear the display and set the cursor to the home position
+//
 
 void SSD1306_text::clear() {
     uint8_t buffer[width_];
@@ -214,6 +236,15 @@ void SSD1306_text::clear() {
 }
 
 
+//
+// SSD1306_text::clear_line
+// Arguments: row -- Row of the display to clear
+// Returns: Nothing
+//
+// Clear one line (row) of the display and set the cursor to the
+// beginning of the line
+//
+
 void SSD1306_text::clear_line(unsigned row) {
     uint8_t buffer[width_];
 
@@ -223,6 +254,15 @@ void SSD1306_text::clear_line(unsigned row) {
     position(row, 0);
 }
 
+
+//
+// SSD1306_text::position
+// Arguments: row -- Row to reposition the cursor to
+//            col -- column to reposition the cursor to
+// Returns: Nothing
+//
+// Set the cursor position to the specified row and column
+//
 
 void SSD1306_text::position(unsigned row, unsigned col) {
     uint8_t cmds[6];
@@ -244,6 +284,14 @@ void SSD1306_text::position(unsigned row, unsigned col) {
     cursor_pos_.col = col;
 }
 
+
+//
+// SD1306_text::write_string
+// Arguments: str -- string to write to the screen
+// Returns: Nothing
+//
+// Write a string to the screen.  The string must be null terminated.
+//
 
 void SSD1306_text::write_string(const char *str) {
     const char *cp;
@@ -274,22 +322,40 @@ void SSD1306_text::write_string(const char *str) {
 }
 
 
-void SSD1306_text::write_cmds(const uint8_t *cmd, unsigned len) {
+//
+// SD1306_text::write_cmds
+// Arguments: cmds -- array of command bytes to write
+//            len -- size of the array
+// Returns: Nothing
+//
+// Write a sequence of bytes as commands to the display using I2C
+//
+
+void SSD1306_text::write_cmds(const uint8_t *cmds, unsigned len) {
     uint8_t cmd_bytes[2];
     cmd_bytes[0] = 0x80;  // Co high, D/C# low
     for (unsigned i = 0; i < len; i++) {
-        cmd_bytes[1] = cmd[i];
+        cmd_bytes[1] = cmds[i];
         i2c_write_blocking(i2c_default, i2c_addr_, cmd_bytes, 2, false);
     }
 }
 
+
+//
+// SD1306_text::write_cmds
+// Arguments: cmd -- array of command bytes to write
+//            len -- size of the array
+// Returns: Nothing
+//
+// Write a sequence of bytes as data to the display using I2C
+//
 
 void SSD1306_text::write_data(const uint8_t *data, unsigned len) {
     uint8_t buffer[129];
     unsigned write_len;
     unsigned written;
 
-    buffer[0] = 0x40;
+    buffer[0] = 0x40;  // Co low, D/C# high
     written = 0;
     while (written != len) {
         write_len = ((len - written) > (sizeof(buffer) - 1)) ? sizeof(buffer) - 1 : (len - written);
