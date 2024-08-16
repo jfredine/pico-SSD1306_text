@@ -6,7 +6,8 @@ class SSD1306_text {
     SSD1306_text(uint height=64, uint width=128,
                  uint i2c_addr=0x3c, i2c_inst_t *i2c=i2c_default,
                  uint sda=PICO_DEFAULT_I2C_SDA_PIN,
-                 uint scl=PICO_DEFAULT_I2C_SCL_PIN);
+                 uint scl=PICO_DEFAULT_I2C_SCL_PIN,
+                 uint i2c_frequency=400000);
 
     void clear(void);
     void clear_line(unsigned row);
@@ -26,6 +27,7 @@ class SSD1306_text {
     uint height_;
     uint width_;
     uint i2c_addr_;
+    i2c_inst_t *i2c_;
 
     enum SSD1306_commands {
         // Fundamentals

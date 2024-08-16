@@ -7,8 +7,8 @@
 
 
 // Font array initially taken from the Pico SSD1306 example
-// and then re-organized with 128 entries to support the ASCII
-// characters and make look up easier.  Patterns for more symbols
+// and then re-organized with 128 entries to make direct ASCII
+// symbol look up easy.  Patterns for more symbols
 // have been added so that all visible symbols in the ASCII set
 // should now be present.  Non-printable characters will be displayed
 // as a space.
@@ -158,31 +158,39 @@ const uint8_t SSD1306_text::font_[][8] = {
 // SSD1306_text::SSD1306_text
 // Arguments: height -- Height of the display in pixels
 //            width -- Width of the display in pixels
+//            init -- True to initialize I2C system
 //            i2c_addr -- Address of the display on the I2C bus
 //            i2c -- One of the I2C blocks in the pico (i2c0 or i2c1)
 //            sda -- GPIO to be used for SDA of the I2C bus
-//                  (must be valid for the i2c chosen)
+//                   (must be valid for the i2c chosen)
 //            scl -- GPIO to be used for SCL on the I2C bus
-//                  (must be valid for the i2c chosen)
+//                   (must be valid for the i2c chosen)
+//            i2c_frequency -- Frequency of I2C interface
+//                             (may be set to 0 to skip I2C initialization)
 // Returns: Nothing
 //
 // Constructor which sets up I2C and initializes the display
 //
 
-SSD1306_text::SSD1306_text(uint height, uint width, uint i2c_addr,
-                           i2c_inst_t *i2c, uint sda, uint scl) {
+SSD1306_text::SSD1306_text(uint height, uint width,
+                           uint i2c_addr,
+                           i2c_inst_t *i2c, uint sda, uint scl,
+                           uint i2c_frequency) {
 
     height_ = height;
     width_ = width;
+    i2c_ = i2c;
     i2c_addr_ = i2c_addr;
     cursor_pos_.row = 0;
     cursor_pos_.col = 0;
 
-    i2c_init(i2c, 400000);
-    gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
-    gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
-    gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
-    gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
+    if (i2c_frequency != 0) {
+        i2c_init(i2c, i2c_frequency);
+        gpio_set_function(sda, GPIO_FUNC_I2C);
+        gpio_set_function(scl, GPIO_FUNC_I2C);
+        gpio_pull_up(sda);
+        gpio_pull_up(scl);
+    }
 
     uint8_t cmds[] = {
         DISP_SLEEP,
@@ -338,7 +346,7 @@ void SSD1306_text::write_cmds(const uint8_t *cmds, unsigned len) {
     cmd_bytes[0] = 0x80;  // Co high, D/C# low
     for (unsigned i = 0; i < len; i++) {
         cmd_bytes[1] = cmds[i];
-        i2c_write_blocking(i2c_default, i2c_addr_, cmd_bytes, 2, false);
+        i2c_write_blocking(i2c_, i2c_addr_, cmd_bytes, 2, false);
     }
 }
 
@@ -362,7 +370,7 @@ void SSD1306_text::write_data(const uint8_t *data, unsigned len) {
     while (written != len) {
         write_len = ((len - written) > (sizeof(buffer) - 1)) ? sizeof(buffer) - 1 : (len - written);
         memcpy(&buffer[1], &data[written], write_len);
-        i2c_write_blocking(i2c_default, i2c_addr_, buffer, write_len + 1, false);
+        i2c_write_blocking(i2c_, i2c_addr_, buffer, write_len + 1, false);
         written += write_len;
     }
 }
