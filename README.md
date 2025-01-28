@@ -42,19 +42,26 @@ The remaining methods of the SSD1306_text class are for manipulating the LCD.
 
 #### void SSD1306_text::clear(void)
 
-Clear the screen and move the cursor to the home position
+Clear the display buffer.  The display will not be updated until
+the SSD1306_text::update() method is called.
 
 #### void SSD1306_text::clear_line(void)
 
-Clear the current line and move the cursor to the beginning of the line
+Clear the current line and move the cursor to the beginning of the line.  The
+display will not be updated until the SSD1306_text::update() method is called.
 
 #### void SSD1306_text::position(uint row, uint col)
 
-Move the cursor to the specified position
+Move the cursor to the specified position.
 
 #### void SSD1306_text::write_string(const char *str)
 
-Display the specified string at the current cursor position
+Write the string to the display buffer.  The display will not be updated until
+the SSD1306_text::update() method is called.
+
+#### void SSD1306_text::update(void)
+
+Update the display based on the current buffer contents.
 
 ## Adding The Library To Your Project
 

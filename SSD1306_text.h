@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 
@@ -10,16 +11,17 @@ class SSD1306_text {
                  uint i2c_frequency=400000);
 
     void clear(void);
-    void clear_line(unsigned row);
-    void position(unsigned row, unsigned col);
+    void clear_line(uint row);
+    void position(uint row, uint col);
     void write_string(const char *str);
+    void update(void);
  private:
-    void write_cmds(const uint8_t *cmds, unsigned len);
-    void write_data(const uint8_t *data, unsigned len);
+    void write_cmds(const uint8_t *cmds, uint len);
+    void write_data(const uint8_t *data, uint len);
 
     typedef struct cursor_pos_s {
-        unsigned row;
-        unsigned col;
+        uint row;
+        uint col;
     } cursor_pos_t;
     cursor_pos_t cursor_pos_;
 
@@ -28,6 +30,8 @@ class SSD1306_text {
     uint width_;
     uint i2c_addr_;
     i2c_inst_t *i2c_;
+    uint8_t *buffer_;
+    uint buffer_size_;
 
     enum SSD1306_commands {
         // Fundamentals

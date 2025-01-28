@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "SSD1306_text.h"
@@ -184,13 +186,17 @@ SSD1306_text::SSD1306_text(uint height, uint width,
     cursor_pos_.row = 0;
     cursor_pos_.col = 0;
 
-    if (i2c_frequency != 0) {
+    if (i2c_frequency > 0) {
         i2c_init(i2c, i2c_frequency);
         gpio_set_function(sda, GPIO_FUNC_I2C);
         gpio_set_function(scl, GPIO_FUNC_I2C);
         gpio_pull_up(sda);
         gpio_pull_up(scl);
     }
+
+    buffer_size_ = width * (((height_ - 1) / 8) + 1);
+    buffer_ = reinterpret_cast<uint8_t *>(malloc(sizeof(uint8_t) * buffer_size_));
+    memset(buffer_, 0, buffer_size_);
 
     uint8_t cmds[] = {
         DISP_SLEEP,
@@ -222,7 +228,7 @@ SSD1306_text::SSD1306_text(uint height, uint width,
     };
 
     write_cmds(cmds, sizeof(cmds));
-    clear();
+    update();
 }
 
 
@@ -235,13 +241,7 @@ SSD1306_text::SSD1306_text(uint height, uint width,
 //
 
 void SSD1306_text::clear() {
-    uint8_t buffer[width_];
-
-    memset(buffer, 0, sizeof(buffer));
-    position(0, 0);
-    for (int i = 0; i < (height_ / 8); i++) {
-        write_data(buffer, sizeof(buffer));
-    }
+    memset(buffer_, 0, buffer_size_);
     position(0, 0);
 }
 
@@ -255,12 +255,11 @@ void SSD1306_text::clear() {
 // beginning of the line
 //
 
-void SSD1306_text::clear_line(unsigned row) {
-    uint8_t buffer[width_];
-
-    memset(buffer, 0, sizeof(buffer));
-    position(row, 0);
-    write_data(buffer, sizeof(buffer));
+void SSD1306_text::clear_line(uint row) {
+    if (row > ((height_ - 1) / 8)) {
+        return;
+    }
+    memset(&buffer_[row * width_], 0, width_ * 8);
     position(row, 0);
 }
 
@@ -274,22 +273,11 @@ void SSD1306_text::clear_line(unsigned row) {
 // Set the cursor position to the specified row and column
 //
 
-void SSD1306_text::position(unsigned row, unsigned col) {
-    uint8_t cmds[6];
-
+void SSD1306_text::position(uint row, uint col) {
     if ((row > ((height_ - 1) / 8))
         || (col  > (width_ - 1) / 8)) {
         return;
     }
-
-    cmds[0] = SET_LO_HI_COL_ADDR;
-    cmds[1] = col * 8;
-    cmds[2] = width_ - 1;
-    cmds[3] = SET_LO_HI_PAGE_ADDR;
-    cmds[4] = row;
-    cmds[5] = (height_ / 8) - 1;
-    write_cmds(cmds, sizeof(cmds));
-
     cursor_pos_.row = row;
     cursor_pos_.col = col;
 }
@@ -322,7 +310,6 @@ void SSD1306_text::write_string(const char *str) {
                 cursor_pos_.row++;
                 if (cursor_pos_.row == (height_ / 8)) {
                     cursor_pos_.row = 0;
-                    // wrap back to top does not seem to work automatically
                     position(cursor_pos_.row, 0);
                 }
                 clear_line(cursor_pos_.row);
@@ -341,10 +328,10 @@ void SSD1306_text::write_string(const char *str) {
 // Write a sequence of bytes as commands to the display using I2C
 //
 
-void SSD1306_text::write_cmds(const uint8_t *cmds, unsigned len) {
+void SSD1306_text::write_cmds(const uint8_t *cmds, uint len) {
     uint8_t cmd_bytes[2];
     cmd_bytes[0] = 0x80;  // Co high, D/C# low
-    for (unsigned i = 0; i < len; i++) {
+    for (uint i = 0; i < len; i++) {
         cmd_bytes[1] = cmds[i];
         i2c_write_blocking(i2c_, i2c_addr_, cmd_bytes, 2, false);
     }
@@ -357,19 +344,38 @@ void SSD1306_text::write_cmds(const uint8_t *cmds, unsigned len) {
 //            len -- size of the array
 // Returns: Nothing
 //
-// Write a sequence of bytes as data to the display using I2C
+// Write a sequence of bytes to the local display buffer.  The screen will
+// not be updated until update() has been called
 //
 
-void SSD1306_text::write_data(const uint8_t *data, unsigned len) {
+void SSD1306_text::write_data(const uint8_t *data, uint len) {
+    uint start = (cursor_pos_.row * width_) + (cursor_pos_.col * 8);
+    memcpy(&buffer_[start], data, len);
+}
+
+
+void SSD1306_text::update() {
+    uint8_t cmds[6];
+
+    cmds[0] = SET_LO_HI_COL_ADDR;
+    cmds[1] = 0;
+    cmds[2] = width_ - 1;
+    cmds[3] = SET_LO_HI_PAGE_ADDR;
+    cmds[4] = 0;
+    cmds[5] = ((height_ - 1) / 8);
+    write_cmds(cmds, sizeof(cmds));
+
     uint8_t buffer[129];
-    unsigned write_len;
-    unsigned written;
+    uint write_len;
+    uint written;
 
     buffer[0] = 0x40;  // Co low, D/C# high
     written = 0;
-    while (written != len) {
-        write_len = ((len - written) > (sizeof(buffer) - 1)) ? sizeof(buffer) - 1 : (len - written);
-        memcpy(&buffer[1], &data[written], write_len);
+    while (written != buffer_size_) {
+        write_len = ((buffer_size_ - written) > (sizeof(buffer) - 1))
+                    ? sizeof(buffer) - 1
+                    : (buffer_size_ - written);
+        memcpy(&buffer[1], &buffer_[written], write_len);
         i2c_write_blocking(i2c_, i2c_addr_, buffer, write_len + 1, false);
         written += write_len;
     }

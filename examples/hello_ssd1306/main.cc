@@ -13,6 +13,7 @@ int main(int argc, char *argv[]) {
     display.clear();
     display.position(2, 0);
     display.write_string("Hello World!");
+    display.update();
     while (1) {
     }
 
